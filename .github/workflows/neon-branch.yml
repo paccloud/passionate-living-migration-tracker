@@ -1,0 +1,36 @@
+name: Create Neon Branch for Pull Request
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  create-neon-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Neon Branch
+        uses: neondatabase/create-branch-action@v5
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+          branch_name: preview/pr-${{ github.event.pull_request.number }}
+          username: ${{ secrets.NEON_DATABASE_USERNAME }}
+          database: ${{ secrets.NEON_DATABASE_NAME }}
+        id: create-branch
+
+      - name: Comment PR with Branch Info
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🎉 **Neon Database Branch Created!**
+              
+              **Branch Name:** \`preview/pr-${{ github.event.pull_request.number }}\`
+              **Connection String:** \`${{ steps.create-branch.outputs.db_url }}\`
+              
+              This preview database will be automatically deleted when the PR is closed.`
+            })
