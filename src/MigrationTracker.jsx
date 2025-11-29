@@ -1,27 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, Circle, Zap, Edit2, Save, Plus, Trash2, ChevronDown, ChevronUp, MessageSquare, Image as ImageIcon, Upload, X } from 'lucide-react';
-
-const defaultMilestones = [
-  { id: 1, title: 'Phase 1: Discovery & Planning', description: 'Brand analysis, requirements gathering, and project roadmap creation', status: 'completed', completedDate: 'Nov 1', billingStatus: 'billed' },
-  { id: 2, title: 'Phase 2: Design System & Brand Guide', description: 'Color palette, typography, component library, and UI documentation', status: 'completed', completedDate: 'Nov 8', billingStatus: 'billed' },
-  { id: 3, title: 'Phase 3: WordPress Theme Setup', description: 'Block theme structure, theme.json configuration, Hostinger deployment', status: 'completed', completedDate: 'Nov 15', billingStatus: 'billed' },
-  { id: 4, title: 'Phase 4: Header, Hero & Footer', description: 'Core layout components with animations and responsive design', status: 'completed', completedDate: 'Nov 22', billingStatus: 'billed' },
-  { id: 5, title: 'Phase 5: Episodes Plugin', description: 'Custom post type, video integration, and episode archive templates', status: 'completed', completedDate: 'Nov 29', billingStatus: 'due' },
-  { id: 6, title: 'Phase 6: Content Migration', description: 'Migrating existing content, media optimization, and SEO preservation', status: 'in-progress', targetDate: 'Dec 6', billingStatus: 'pending' },
-  { id: 7, title: 'Phase 7: Testing & QA', description: 'Cross-browser testing, performance optimization, accessibility audit', status: 'upcoming', targetDate: 'Dec 13', billingStatus: 'pending' },
-  { id: 8, title: 'Phase 8: Launch & Handoff', description: 'DNS migration, final deployment, training, and documentation', status: 'upcoming', targetDate: 'Dec 20', billingStatus: 'pending' },
-];
-
-const defaultBilling = [
-  { id: 1, name: 'Phase 1-2 Deposit', date: 'Nov 1, 2024', amount: 1500, status: 'paid' },
-  { id: 2, name: 'Phase 3-4 Milestone', date: 'Nov 22, 2024', amount: 1500, status: 'paid' },
-  { id: 3, name: 'Phase 5-6 Milestone', date: 'Dec 6, 2024', amount: 1500, status: 'pending' },
-  { id: 4, name: 'Final Payment', date: 'Dec 20, 2024', amount: 1500, status: 'upcoming' },
-];
+import { milestonesAPI, billingAPI, commentsAPI, settingsAPI } from './api';
 
 export default function MigrationTracker() {
-  const [milestones, setMilestones] = useState(defaultMilestones);
-  const [billing, setBilling] = useState(defaultBilling);
+  const [milestones, setMilestones] = useState([]);
+  const [billing, setBilling] = useState([]);
+  const [comments, setComments] = useState([]);
   const [currentWeek, setCurrentWeek] = useState(6);
   const [targetLaunch, setTargetLaunch] = useState('Dec 20');
   const [projectTitle, setProjectTitle] = useState('Website Migration Progress');
@@ -32,12 +16,48 @@ export default function MigrationTracker() {
   const [editingProject, setEditingProject] = useState(false);
   const [showAddMilestone, setShowAddMilestone] = useState(false);
   const [showAddBilling, setShowAddBilling] = useState(false);
-  const [comments, setComments] = useState([
-    { id: 1, author: 'Ryan', role: 'vendor', text: 'Initial project setup complete. Ready for design review.', date: 'Nov 1, 2024', image: null },
-    { id: 2, author: 'Client', role: 'client', text: 'Love the new color palette! Can we make the red a bit darker?', date: 'Nov 9, 2024', image: null }
-  ]);
   const [showAddComment, setShowAddComment] = useState(false);
   const [expandedSection, setExpandedSection] = useState({ milestones: true, billing: true, comments: true });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Load all data on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [milestonesData, billingData, commentsData, settingsData] = await Promise.all([
+        milestonesAPI.getAll(),
+        billingAPI.getAll(),
+        commentsAPI.getAll(),
+        settingsAPI.getAll()
+      ]);
+      
+      setMilestones(milestonesData.map(m => ({
+        ...m,
+        billingStatus: m.billing_status,
+        completedDate: m.completed_date,
+        targetDate: m.target_date
+      })));
+      setBilling(billingData);
+      setComments(commentsData);
+      
+      if (settingsData.current_week) setCurrentWeek(parseInt(settingsData.current_week));
+      if (settingsData.target_launch) setTargetLaunch(settingsData.target_launch);
+      if (settingsData.project_title) setProjectTitle(settingsData.project_title);
+      if (settingsData.project_subtitle) setProjectSubtitle(settingsData.project_subtitle);
+      
+      setError(null);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+      setError('Failed to load data. Please refresh the page.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const completedCount = milestones.filter(m => m.status === 'completed').length;
   const totalCount = milestones.length;
@@ -48,54 +68,134 @@ export default function MigrationTracker() {
   const totalAmount = billing.reduce((sum, b) => sum + b.amount, 0);
   const remainingAmount = totalAmount - paidAmount;
 
-  const updateMilestoneStatus = (id, newStatus) => {
-    setMilestones(milestones.map(m => 
-      m.id === id ? { ...m, status: newStatus, completedDate: newStatus === 'completed' ? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : m.completedDate } : m
-    ));
+  const updateMilestoneStatus = async (id, newStatus) => {
+    const milestone = milestones.find(m => m.id === id);
+    const updatedMilestone = {
+      ...milestone,
+      status: newStatus,
+      completed_date: newStatus === 'completed' ? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : milestone.completed_date
+    };
+    try {
+      await milestonesAPI.update(updatedMilestone);
+      setMilestones(milestones.map(m => m.id === id ? { ...m, status: newStatus, completedDate: updatedMilestone.completed_date } : m));
+    } catch (err) {
+      console.error('Failed to update milestone:', err);
+    }
   };
 
-  const updateBillingStatus = (id, newStatus) => {
-    setBilling(billing.map(b => b.id === id ? { ...b, status: newStatus } : b));
+  const updateBillingStatus = async (id, newStatus) => {
+    const item = billing.find(b => b.id === id);
+    try {
+      await billingAPI.update({ ...item, status: newStatus });
+      setBilling(billing.map(b => b.id === id ? { ...b, status: newStatus } : b));
+    } catch (err) {
+      console.error('Failed to update billing:', err);
+    }
   };
 
-  const saveMilestoneEdit = (id, updates) => {
-    setMilestones(milestones.map(m => m.id === id ? { ...m, ...updates } : m));
-    setEditingMilestone(null);
+  const saveMilestoneEdit = async (id, updates) => {
+    const milestone = milestones.find(m => m.id === id);
+    const updatedMilestone = {
+      ...milestone,
+      ...updates,
+      billing_status: updates.billingStatus,
+      completed_date: updates.completedDate,
+      target_date: updates.targetDate
+    };
+    try {
+      await milestonesAPI.update(updatedMilestone);
+      setMilestones(milestones.map(m => m.id === id ? { ...m, ...updates } : m));
+      setEditingMilestone(null);
+    } catch (err) {
+      console.error('Failed to save milestone:', err);
+    }
   };
 
-  const saveBillingEdit = (id, updates) => {
-    setBilling(billing.map(b => b.id === id ? { ...b, ...updates } : b));
-    setEditingBilling(null);
+  const saveBillingEdit = async (id, updates) => {
+    const item = billing.find(b => b.id === id);
+    try {
+      await billingAPI.update({ ...item, ...updates });
+      setBilling(billing.map(b => b.id === id ? { ...b, ...updates } : b));
+      setEditingBilling(null);
+    } catch (err) {
+      console.error('Failed to save billing:', err);
+    }
   };
 
-  const addMilestone = (newMilestone) => {
-    const maxId = Math.max(...milestones.map(m => m.id), 0);
-    setMilestones([...milestones, { ...newMilestone, id: maxId + 1 }]);
-    setShowAddMilestone(false);
+  const addMilestone = async (newMilestone) => {
+    try {
+      const created = await milestonesAPI.create({
+        title: newMilestone.title,
+        description: newMilestone.description,
+        status: newMilestone.status || 'upcoming',
+        target_date: newMilestone.targetDate,
+        billing_status: newMilestone.billingStatus || 'pending'
+      });
+      setMilestones([...milestones, {
+        ...created,
+        billingStatus: created.billing_status,
+        targetDate: created.target_date,
+        completedDate: created.completed_date
+      }]);
+      setShowAddMilestone(false);
+    } catch (err) {
+      console.error('Failed to add milestone:', err);
+    }
   };
 
-  const addBillingItem = (newItem) => {
-    const maxId = Math.max(...billing.map(b => b.id), 0);
-    setBilling([...billing, { ...newItem, id: maxId + 1 }]);
-    setShowAddBilling(false);
+  const addBillingItem = async (newItem) => {
+    try {
+      const created = await billingAPI.create(newItem);
+      setBilling([...billing, created]);
+      setShowAddBilling(false);
+    } catch (err) {
+      console.error('Failed to add billing item:', err);
+    }
   };
 
-  const deleteMilestone = (id) => {
-    setMilestones(milestones.filter(m => m.id !== id));
+  const deleteMilestone = async (id) => {
+    try {
+      await milestonesAPI.delete(id);
+      setMilestones(milestones.filter(m => m.id !== id));
+    } catch (err) {
+      console.error('Failed to delete milestone:', err);
+    }
   };
 
-  const deleteBilling = (id) => {
-    setBilling(billing.filter(b => b.id !== id));
+  const deleteBilling = async (id) => {
+    try {
+      await billingAPI.delete(id);
+      setBilling(billing.filter(b => b.id !== id));
+    } catch (err) {
+      console.error('Failed to delete billing:', err);
+    }
   };
 
-  const addComment = (newComment) => {
-    const maxId = Math.max(...comments.map(c => c.id), 0);
-    setComments([...comments, { ...newComment, id: maxId + 1, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }]);
-    setShowAddComment(false);
+  const addComment = async (newComment) => {
+    try {
+      const created = await commentsAPI.create(newComment);
+      setComments([created, ...comments]);
+      setShowAddComment(false);
+    } catch (err) {
+      console.error('Failed to add comment:', err);
+    }
   };
 
-  const deleteComment = (id) => {
-    setComments(comments.filter(c => c.id !== id));
+  const deleteComment = async (id) => {
+    try {
+      await commentsAPI.delete(id);
+      setComments(comments.filter(c => c.id !== id));
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+    }
+  };
+
+  const updateSetting = async (key, value) => {
+    try {
+      await settingsAPI.update(key, value);
+    } catch (err) {
+      console.error('Failed to update setting:', err);
+    }
   };
 
   const StatusIcon = ({ status }) => {
@@ -156,7 +256,20 @@ export default function MigrationTracker() {
       </header>
 
       <main style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
-        <section style={{ textAlign: 'center', marginBottom: 40 }}>
+        {error && (
+          <div style={{ background: '#fee', border: '2px solid #c00', borderRadius: 12, padding: 16, marginBottom: 24, color: '#c00', textAlign: 'center' }}>
+            ⚠️ {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 60, color: '#8B1A1A' }}>
+            <div style={{ fontSize: '3rem', marginBottom: 16 }}>⏳</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Loading project data...</div>
+          </div>
+        ) : (
+          <>
+            <section style={{ textAlign: 'center', marginBottom: 40 }}>
           {editingProject ? (
             <div style={{ background: 'white', padding: 24, borderRadius: 16, maxWidth: 600, margin: '0 auto', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
               <input type="text" value={projectTitle} onChange={e => setProjectTitle(e.target.value)}
@@ -181,9 +294,9 @@ export default function MigrationTracker() {
 
         <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 32 }}>
           <StatCard icon="📋" value={`${completedCount}/${totalCount}`} label="Phases Complete" />
-          <StatCard icon="⏱️" value={currentWeek} label="Current Week" editable={true} onSave={setCurrentWeek} type="number" />
+          <StatCard icon="⏱️" value={currentWeek} label="Current Week" editable={true} onSave={(val) => { setCurrentWeek(val); updateSetting('current_week', val.toString()); }} type="number" />
           <StatCard icon="✅" value={tasksCompleted} label="Tasks Done" />
-          <StatCard icon="📅" value={targetLaunch} label="Target Launch" editable={true} onSave={setTargetLaunch} type="text" />
+          <StatCard icon="📅" value={targetLaunch} label="Target Launch" editable={true} onSave={(val) => { setTargetLaunch(val); updateSetting('target_launch', val); }} type="text" />
         </section>
 
         <section style={{ background: 'white', borderRadius: 24, padding: 24, marginBottom: 32, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
@@ -356,6 +469,8 @@ export default function MigrationTracker() {
             )}
           </section>
         </div>
+          </>
+        )}
       </main>
 
       <footer style={{ textAlign: 'center', padding: '32px 24px', color: '#6B6B6B', fontSize: '0.85rem' }}>
