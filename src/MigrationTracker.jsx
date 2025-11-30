@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useStackApp, useUser } from '@stackframe/react';
 import { Check, Circle, Zap, Edit2, Save, Plus, Trash2, ChevronDown, ChevronUp, MessageSquare, Image as ImageIcon, Upload, X } from 'lucide-react';
 import { milestonesAPI, billingAPI, commentsAPI, settingsAPI } from './api';
 import Calendar from './Calendar';
 
 export default function MigrationTracker() {
+  const app = useStackApp();
+  const user = useUser();
   const [milestones, setMilestones] = useState([]);
   const [billing, setBilling] = useState([]);
   const [comments, setComments] = useState([]);
@@ -278,13 +281,62 @@ export default function MigrationTracker() {
     );
   };
 
+
+  if (!user) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#FFF8F0', fontFamily: "'Open Sans', sans-serif", padding: 20 }}>
+        <div style={{ textAlign: 'center', background: 'white', padding: 40, borderRadius: 24, boxShadow: '0 10px 25px rgba(0,0,0,0.1)', maxWidth: 500, width: '100%' }}>
+          <h1 style={{ fontFamily: "'Pacifico', cursive", fontSize: '3rem', color: '#8B1A1A', marginBottom: 16 }}>Passionate Living</h1>
+          <p style={{ color: '#6B6B6B', marginBottom: 32, fontSize: '1.1rem' }}>Website Migration Tracker</p>
+          
+          <button 
+            onClick={() => {
+              if (app.urls && app.urls.signIn) {
+                window.location.href = app.urls.signIn;
+              } else {
+                console.error('Sign in URL is missing!', app);
+                alert('Configuration error: Sign in URL is missing. Please check the console.');
+              }
+            }} 
+            style={{ 
+              padding: '12px 32px', 
+              background: '#8B1A1A', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: 8, 
+              fontSize: '1.1rem', 
+              cursor: 'pointer', 
+              fontWeight: 600, 
+              transition: 'transform 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            Sign In to Access
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+
   return (
     <div style={{ minHeight: '100vh', background: '#FFF8F0', fontFamily: "'Open Sans', sans-serif" }}>
       <header style={{ background: 'white', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', padding: '16px 24px', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <span style={{ fontFamily: "'Pacifico', cursive", fontSize: '1.5rem', color: '#8B1A1A' }}>Passionate Living</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'linear-gradient(135deg, #8B1A1A, #FF8C42)', color: 'white', borderRadius: 9999, fontWeight: 600, fontSize: '0.85rem' }}>
-            <span>🚀</span><span>Migration In Progress</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button 
+              onClick={() => user.signOut()} 
+              style={{ padding: '8px 16px', background: 'white', border: '1px solid #8B1A1A', color: '#8B1A1A', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#8B1A1A'; e.currentTarget.style.color = 'white'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#8B1A1A'; }}
+            >
+              Sign Out
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'linear-gradient(135deg, #8B1A1A, #FF8C42)', color: 'white', borderRadius: 9999, fontWeight: 600, fontSize: '0.85rem' }}>
+              <span>🚀</span><span>Migration In Progress</span>
+            </div>
           </div>
         </div>
       </header>
