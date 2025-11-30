@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Check, Circle, Zap, Edit2, Save, Plus, Trash2, ChevronDown, ChevronUp, MessageSquare, Image as ImageIcon, Upload, X } from 'lucide-react';
 import { milestonesAPI, billingAPI, commentsAPI, settingsAPI } from './api';
+import Calendar from './Calendar';
 
 export default function MigrationTracker() {
   const [milestones, setMilestones] = useState([]);
@@ -78,6 +79,18 @@ export default function MigrationTracker() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEventClick = (type, id) => {
+    setExpandedSection(prev => ({ ...prev, [type === 'milestone' ? 'milestones' : 'billing']: true }));
+    setTimeout(() => {
+      const element = document.getElementById(`${type}-${id}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.style.backgroundColor = '#FFF8F0';
+        setTimeout(() => element.style.backgroundColor = 'white', 2000);
+      }
+    }, 100);
   };
 
   const completedCount = milestones.filter(m => m.status === 'completed').length;
@@ -320,6 +333,8 @@ export default function MigrationTracker() {
           <StatCard icon="📅" value={targetLaunch} label="Target Launch" editable={true} onSave={(val) => { setTargetLaunch(val); updateSetting('target_launch', val); }} type="text" />
         </section>
 
+        <Calendar milestones={milestones} billing={billing} onEventClick={handleEventClick} />
+
         <section style={{ background: 'white', borderRadius: 24, padding: 24, marginBottom: 32, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '1.25rem', fontWeight: 700 }}>Overall Progress</h2>
@@ -351,7 +366,7 @@ export default function MigrationTracker() {
             {expandedSection.milestones && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {milestones.map(m => (
-                  <div key={m.id}>
+                  <div key={m.id} id={`milestone-${m.id}`}>
                     {editingMilestone === m.id ? (
                       <MilestoneForm milestone={m} onSave={(updates) => saveMilestoneEdit(m.id, updates)} onCancel={() => setEditingMilestone(null)} />
                     ) : (
@@ -407,7 +422,7 @@ export default function MigrationTracker() {
                       {editingBilling === b.id ? (
                         <BillingForm billing={b} onSave={(updates) => saveBillingEdit(b.id, updates)} onCancel={() => setEditingBilling(null)} />
                       ) : (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 14, background: '#FFF8F0', borderRadius: 12 }}>
+                        <div id={`billing-${b.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 14, background: '#FFF8F0', borderRadius: 12 }}>
                           <div>
                             <div style={{ fontFamily: "'Montserrat', sans-serif", fontWeight: 600, fontSize: '0.9rem' }}>{b.name}</div>
                             <div style={{ fontSize: '0.8rem', color: '#6B6B6B' }}>{b.date}</div>
