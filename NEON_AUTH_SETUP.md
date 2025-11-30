@@ -45,11 +45,12 @@ If you're using the [Vercel-Neon Integration](https://neon.com/docs/guides/verce
 ## 📋 Current Environment Variables in `.env`
 
 Your current `.env` file has:
+
 ```env
-VITE_STACK_PROJECT_ID=837ab57c-98f2-4c53-880c-12ea476e6fc7
-VITE_STACK_PUBLISHABLE_CLIENT_KEY=pck_yy4mcfyd4tqtw71ampwgaxdkk30kns180qcj2gbjywy60
-STACK_SECRET_SERVER_KEY=ssk_adp1djetjhnxry3mea3vdfw318gv8f4ea6g4hhyrh7t0r
-DATABASE_URL=postgresql://neondb_owner:npg_kXWAGdj6tns3@ep-orange-wave-ae2g3aec-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require
+VITE_STACK_PROJECT_ID=your-project-id-here
+VITE_STACK_PUBLISHABLE_CLIENT_KEY=your-publishable-key-here
+STACK_SECRET_SERVER_KEY=your-secret-key-here
+DATABASE_URL=postgresql://user:password@host:port/database
 ```
 
 **⚠️ Important**: Verify these match what's in your Neon Console → Auth → Configuration page!
@@ -80,10 +81,11 @@ npm run dev
 ### Step 2: Check Console Logs
 
 Open your browser console and look for:
-```
+
+```plaintext
 === NEON AUTH INITIALIZATION ===
-Project ID from env: 837ab57c-98f2-4c53-880c-12ea476e6fc7
-Client Key from env: pck_yy4mcfyd4tqtw71ampwgaxdkk30kns180qcj2gbjywy60
+Project ID from env: your-project-id-here
+Client Key from env: your-publishable-key-here
 ✅ Neon Auth client created
 Stack URLs: { ... }
 ```
@@ -100,6 +102,7 @@ Stack URLs: { ... }
 ### Step 4: Test Sign-Up
 
 You can also directly visit:
+
 - `http://localhost:5174/handler/sign-up` to create a new account
 - The first user you create will be able to access the tracker
 
@@ -138,6 +141,7 @@ You can also directly visit:
 
 **Cause**: Environment variables not loaded
 **Solution**:
+
 1. Restart your dev server: `npm run dev`
 2. Verify `.env` file exists and has correct values
 3. Ensure no quotes around values in `.env`
@@ -151,6 +155,7 @@ You can also directly visit:
 
 **Cause**: Token storage or cookie issues
 **Solution**:
+
 1. Clear browser cookies and localStorage
 2. Ensure `tokenStore: 'cookie'` is set in `stack.js`
 3. Check browser console for errors
@@ -183,16 +188,19 @@ Before considering Neon Auth "working":
 ## 🎉 Expected Final Behavior
 
 ### Before Sign-In:
+
 - Shows "Passionate Living" welcome screen
 - "Sign In to Access" button visible
 - Clicking button redirects to `/handler/sign-in`
 
 ### At `/handler/sign-in`:
+
 - Neon Auth's beautiful sign-in UI appears
 - Can switch between sign-in and sign-up
 - Email/password fields work
 
 ### After Sign-In:
+
 - Redirected back to `/`
 - Migration tracker interface loads
 - Console shows user info
